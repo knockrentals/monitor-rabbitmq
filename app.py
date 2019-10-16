@@ -3,7 +3,10 @@ from requests.compat import urljoin
 from requests.auth import HTTPBasicAuth
 import boto3
 import os
+import json
+
 from utils.logging import logger as log
+from utils.newrelic import MetricsClient
 
 uri_path = os.environ.get('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI')
 if uri_path:
@@ -29,13 +32,13 @@ PASSWORD = os.environ.get("RABBIT_MQ_PASSWORD", "guest")
 
 requestURL = urljoin(URL, '/api/queues')
 
-
 def put_metric(metrics):
     client.put_metric_data(
         Namespace='Resource/RabbitMQ',
         MetricData=metrics
     )
 
+mc = MetricsClient()
 
 if __name__ == '__main__':
     total_messages = 0
@@ -44,14 +47,17 @@ if __name__ == '__main__':
         queues = resp.json()
         count = 0
         metrics = []
-        for q in queues:
+        events = []
+        for count, q in enumerate(queues, start=1):
             messages = q['messages']
             name = q['name']
-            count = count + 1
+
             if count % 10 == 0:
                 put_metric(metrics)
                 metrics = []
-                count = 0
+                mc.log_events(events)
+                events = []
+
             metrics.append({
                     'MetricName': name,
                     'Dimensions': [
@@ -64,9 +70,20 @@ if __name__ == '__main__':
                     'Unit': 'Count',
                     'StorageResolution': 60
                 })
+
+            events.append(mc.create_event(
+                name='RabbitMQCount',
+                tag=name,
+                meta=q
+            ))
+
             total_messages = total_messages + messages
-        if len(metrics) > 0:
-            put_metric(metrics)
+        else:
+            if metrics:
+                put_metric(metrics)
+
+            if events:
+                mc.log_events(events)
 
         put_metric([
                 {
