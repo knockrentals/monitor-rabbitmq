@@ -18,5 +18,5 @@ COPY . /code
 
 ENTRYPOINT [ "/code/entrypoint.sh" ]
 
-CMD ["python", "app.py"]
+CMD ["cron", "-f"]
 
