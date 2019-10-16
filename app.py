@@ -5,16 +5,19 @@ import boto3
 import os
 from utils.logging import logger as log
 
-uri_path = os.environ['AWS_CONTAINER_CREDENTIALS_RELATIVE_URI']
-creds_json = requests.get('http://169.254.170.2' + uri_path)
-creds = json.loads(creds_json.text)
+uri_path = os.environ('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI')
+if uri_path:
+    creds_json = requests.get('http://169.254.170.2' + uri_path)
+    creds = json.loads(creds_json.text)
 
-client = boto3.client(
+    client = boto3.client(
          'cloudwatch',
          region_name='us-east-1',
          aws_access_key_id=creds['AccessKeyId'],
          aws_secret_access_key=creds['SecretAccessKey'],
          aws_session_token=creds['Token'])
+else:
+    client = boto3.client("cloudwatch")
 
 URL = os.environ.get("RABBIT_MQ_URL", 'http://localhost:15672')
 log.info("Using default Admin URL %s", URL)
