@@ -31,6 +31,8 @@ log.info("Using default USERNAME %s", USERNAME)
 
 PASSWORD = os.environ.get("RABBIT_MQ_PASSWORD", "guest")
 
+STAGE = os.environ.get("STAGE", "Production")
+
 requestURL = urljoin(URL, '/api/queues')
 
 def put_metric(metrics):
@@ -66,11 +68,17 @@ if __name__ == '__main__':
                             'Name': 'Resource',
                             'Value': 'RabbitMQ'
                         },
+                        {
+                            'Name': 'Environment',
+                            'Value': STAGE
+                        }
                     ],
                     'Value': messages,
                     'Unit': 'Count',
                     'StorageResolution': 60
                 })
+
+            q['Environment'] = STAGE
 
             events.append(mc.create_event(
                 name='RabbitMQCount',
@@ -94,6 +102,10 @@ if __name__ == '__main__':
                             'Name': 'Resource',
                             'Value': 'RabbitMQ'
                         },
+                        {
+                            'Name': 'Environment',
+                            'Value': STAGE
+                        }
                     ],
                     'Value': total_messages,
                     'Unit': 'Count',
