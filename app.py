@@ -55,6 +55,10 @@ if __name__ == '__main__':
             messages = q['messages']
             name = q['name']
 
+            # celery's weird worker tracking thing
+            if "pidbox" in name or "@" in name:
+                continue
+
             if count % 10 == 0:
                 put_metric(metrics)
                 metrics = []
