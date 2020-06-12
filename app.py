@@ -45,17 +45,18 @@ def process_queue():
 
     if resp.status_code == 200:
         queues = resp.json()
-        logger.info("Writing %d queues", len(queues))
+        logger.info("Checking %d queues", len(queues))
         count = 0
         metrics = []
         events = []
-        for count, q in enumerate(queues, start=1):
+        for q in queues:
             messages = q['messages']
             name = q['name']
 
             # celery's weird worker tracking thing
             if "pidbox" in name or "@" in name:
                 continue
+            count += 1
 
             if len(metrics) >= 10:
                 put_metric(metrics)
@@ -116,7 +117,7 @@ def process_queue():
                 },
             ]
         )
-        logger.info("Total messages: %s", total_messages)
+        logger.info("Queues written: %d, Total messages: %s", count, total_messages)
     else:
         logger.error('error', resp.status_code)
 
