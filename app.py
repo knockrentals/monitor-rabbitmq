@@ -123,7 +123,6 @@ def process_queue():
 
 if __name__ == "__main__":
     while True:
-        logger.info("Starting")
         process_queue()
         dt = datetime.datetime.now()
         dt = (dt + datetime.timedelta(seconds=60)).replace(second=0, microsecond=0)
