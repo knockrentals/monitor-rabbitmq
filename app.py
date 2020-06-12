@@ -5,9 +5,12 @@ from requests.auth import HTTPBasicAuth
 import boto3
 import os
 import json
+import logging
 
-from utils.logging import logger as log
 from utils.newrelic import MetricsClient
+
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 uri_path = os.environ.get('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI')
 if uri_path:
@@ -24,10 +27,10 @@ else:
     client = boto3.client("cloudwatch")
 
 URL = os.environ.get("RABBIT_MQ_URL", 'http://localhost:15672')
-log.info("Using default Admin URL %s", URL)
+logger.info("Using Admin URL %s", URL)
 
 USERNAME = os.environ.get("RABBIT_MQ_USERNAME", "guest")
-log.info("Using default USERNAME %s", USERNAME)
+logger.info("Using USERNAME %s", USERNAME)
 
 PASSWORD = os.environ.get("RABBIT_MQ_PASSWORD", "guest")
 
@@ -46,8 +49,13 @@ mc = MetricsClient()
 if __name__ == '__main__':
     total_messages = 0
     resp = requests.get(requestURL, auth=HTTPBasicAuth(USERNAME, PASSWORD))
+
+    if os.environ.get("DEBUG"):
+        logger.setLevel(logging.DEBUG)
+
     if resp.status_code == 200:
         queues = resp.json()
+        logger.info("Writing %d queues", len(queues))
         count = 0
         metrics = []
         events = []
@@ -59,12 +67,13 @@ if __name__ == '__main__':
             if "pidbox" in name or "@" in name:
                 continue
 
-            if count % 10 == 0:
+            if len(metrics) >= 10:
                 put_metric(metrics)
                 metrics = []
                 mc.log_events(events)
                 events = []
 
+            logger.debug("Queue: %s Messages %d", name, messages)
             metrics.append({
                     'MetricName': name,
                     'Dimensions': [
@@ -117,6 +126,6 @@ if __name__ == '__main__':
                 },
             ]
         )
-        log.info("Total messages: %s", total_messages)
+        logger.info("Total messages: %s", total_messages)
     else:
-        log.error('error', resp.status_code)
+        logger.error('error', resp.status_code)
