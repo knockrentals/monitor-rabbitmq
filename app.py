@@ -6,25 +6,15 @@ import boto3
 import os
 import json
 import logging
+import time
+import datetime
 
 from utils.newrelic import MetricsClient
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-uri_path = os.environ.get('AWS_CONTAINER_CREDENTIALS_RELATIVE_URI')
-if uri_path:
-    creds_json = requests.get('http://169.254.170.2' + uri_path)
-    creds = json.loads(creds_json.text)
-
-    client = boto3.client(
-         'cloudwatch',
-         region_name='us-east-1',
-         aws_access_key_id=creds['AccessKeyId'],
-         aws_secret_access_key=creds['SecretAccessKey'],
-         aws_session_token=creds['Token'])
-else:
-    client = boto3.client("cloudwatch")
+client = boto3.client("cloudwatch", "us-east-1")
 
 URL = os.environ.get("RABBIT_MQ_URL", 'http://localhost:15672')
 logger.info("Using Admin URL %s", URL)
@@ -46,7 +36,7 @@ def put_metric(metrics):
 
 mc = MetricsClient()
 
-if __name__ == '__main__':
+def process_queue():
     total_messages = 0
     resp = requests.get(requestURL, auth=HTTPBasicAuth(USERNAME, PASSWORD))
 
@@ -129,3 +119,12 @@ if __name__ == '__main__':
         logger.info("Total messages: %s", total_messages)
     else:
         logger.error('error', resp.status_code)
+
+if __name__ == "__main__":
+    while True:
+        logger.info("Starting")
+        process_queue()
+        dt = datetime.datetime.now()
+        dt = (dt + datetime.timedelta(seconds=60)).replace(second=0, microsecond=0)
+        total_seconds = (dt - datetime.datetime.now()).total_seconds()
+        time.sleep(total_seconds)
